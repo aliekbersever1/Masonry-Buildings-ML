@@ -20,6 +20,7 @@ def load_all():
         metadata = json.load(f)
 
     models = {}
+
     for target, target_models in metadata["models"].items():
         models[target] = {}
 
@@ -57,11 +58,7 @@ def symbolic_formula_f1(B, L, H, E, rho):
 # Helper functions
 # ============================================================
 
-def get_valid_ranges(ranges, roles):
-    """
-    Return the parameter ranges corresponding to Table 1.
-    """
-
+def get_investigated_ranges(ranges, roles):
     return {
         "B": (
             float(ranges[roles["B"]]["min"]),
@@ -86,12 +83,7 @@ def get_valid_ranges(ranges, roles):
     }
 
 
-def check_extrapolation(B, L, H, E, rho, valid_ranges):
-    """
-    Check whether any user input falls outside the numerical
-    parameter domain used for model development.
-    """
-
+def check_extrapolation(B, L, H, E, rho, investigated_ranges):
     input_values = {
         "B": B,
         "L": L,
@@ -103,20 +95,20 @@ def check_extrapolation(B, L, H, E, rho, valid_ranges):
     outside = {}
 
     for parameter, value in input_values.items():
-        minimum, maximum = valid_ranges[parameter]
+        lower, upper = investigated_ranges[parameter]
 
-        if value < minimum or value > maximum:
+        if value < lower or value > upper:
             outside[parameter] = {
                 "value": value,
-                "min": minimum,
-                "max": maximum,
+                "lower": lower,
+                "upper": upper,
             }
 
     return outside
 
 
 # ============================================================
-# Load files
+# Load metadata and models
 # ============================================================
 
 metadata, models = load_all()
@@ -124,11 +116,14 @@ metadata, models = load_all()
 roles = metadata["roles"]
 ranges = metadata["ranges"]
 
-valid_ranges = get_valid_ranges(ranges, roles)
+investigated_ranges = get_investigated_ranges(
+    ranges,
+    roles,
+)
 
 
 # ============================================================
-# Streamlit page configuration
+# Page configuration
 # ============================================================
 
 st.set_page_config(
@@ -142,7 +137,9 @@ st.set_page_config(
 # Header
 # ============================================================
 
-st.title("Fundamental Frequency Prediction of Masonry Buildings")
+st.title(
+    "Fundamental Frequency Prediction of Masonry Buildings"
+)
 
 st.write(
     "Enter the geometric and material properties to obtain predictions "
@@ -151,15 +148,17 @@ st.write(
 
 
 # ============================================================
-# Valid parameter domain
+# Investigated parameter ranges
 # ============================================================
 
-st.subheader("Valid parameter ranges")
+st.subheader("Investigated parameter ranges")
 
 st.info(
-    "The models were developed and evaluated only within the numerical "
-    "parameter ranges listed below. Predictions within these bounds "
-    "represent interpolation within the investigated numerical domain."
+    "The following ranges correspond to the numerical database used "
+    "to develop and evaluate the prediction models. They do not represent "
+    "physical minimum or maximum limits for masonry buildings. Predictions "
+    "outside these ranges correspond to extrapolation beyond the "
+    "model-development domain."
 )
 
 range_table = pd.DataFrame(
@@ -178,19 +177,21 @@ range_table = pd.DataFrame(
             "MPa",
             "kg/m³",
         ],
-        "Minimum": [
-            valid_ranges["B"][0],
-            valid_ranges["L"][0],
-            valid_ranges["H"][0],
-            valid_ranges["E"][0],
-            valid_ranges["rho"][0],
-        ],
-        "Maximum": [
-            valid_ranges["B"][1],
-            valid_ranges["L"][1],
-            valid_ranges["H"][1],
-            valid_ranges["E"][1],
-            valid_ranges["rho"][1],
+        "Investigated range": [
+            f'{investigated_ranges["B"][0]:.2f}–'
+            f'{investigated_ranges["B"][1]:.2f}',
+
+            f'{investigated_ranges["L"][0]:.2f}–'
+            f'{investigated_ranges["L"][1]:.2f}',
+
+            f'{investigated_ranges["H"][0]:.2f}–'
+            f'{investigated_ranges["H"][1]:.2f}',
+
+            f'{investigated_ranges["E"][0]:.0f}–'
+            f'{investigated_ranges["E"][1]:.0f}',
+
+            f'{investigated_ranges["rho"][0]:.0f}–'
+            f'{investigated_ranges["rho"][1]:.0f}',
         ],
     }
 )
@@ -214,27 +215,22 @@ allow_extrapolation = st.checkbox(
 if allow_extrapolation:
     st.warning(
         "Extrapolation is enabled. Predictions for inputs outside the "
-        "investigated parameter ranges have not been validated and "
-        "should be interpreted with caution."
+        "investigated parameter ranges were not evaluated during model "
+        "development and should be interpreted with caution."
     )
 else:
     st.caption(
         "Extrapolation is disabled. Input values are restricted to "
-        "the parameter ranges used for model development."
+        "the investigated parameter ranges."
     )
 
 
 # ============================================================
-# User inputs
+# Input controls
 # ============================================================
 
 left, right = st.columns(2)
 
-
-# ------------------------------------------------------------
-# If extrapolation is allowed, do not impose min/max limits.
-# Otherwise, restrict values to the investigated domain.
-# ------------------------------------------------------------
 
 with left:
 
@@ -262,24 +258,24 @@ with left:
 
         B = st.number_input(
             "Plan width, B (m)",
-            min_value=valid_ranges["B"][0],
-            max_value=valid_ranges["B"][1],
+            min_value=investigated_ranges["B"][0],
+            max_value=investigated_ranges["B"][1],
             value=float(ranges[roles["B"]]["default"]),
             step=0.10,
         )
 
         L = st.number_input(
             "Plan length, L (m)",
-            min_value=valid_ranges["L"][0],
-            max_value=valid_ranges["L"][1],
+            min_value=investigated_ranges["L"][0],
+            max_value=investigated_ranges["L"][1],
             value=float(ranges[roles["L"]]["default"]),
             step=0.10,
         )
 
         H = st.number_input(
             "Structural height, H (m)",
-            min_value=valid_ranges["H"][0],
-            max_value=valid_ranges["H"][1],
+            min_value=investigated_ranges["H"][0],
+            max_value=investigated_ranges["H"][1],
             value=float(ranges[roles["H"]]["default"]),
             step=0.10,
         )
@@ -305,23 +301,23 @@ with right:
 
         E = st.number_input(
             "Elastic modulus, E (MPa)",
-            min_value=valid_ranges["E"][0],
-            max_value=valid_ranges["E"][1],
+            min_value=investigated_ranges["E"][0],
+            max_value=investigated_ranges["E"][1],
             value=float(ranges[roles["E"]]["default"]),
             step=50.0,
         )
 
         rho = st.number_input(
             "Wall density, ρ (kg/m³)",
-            min_value=valid_ranges["rho"][0],
-            max_value=valid_ranges["rho"][1],
+            min_value=investigated_ranges["rho"][0],
+            max_value=investigated_ranges["rho"][1],
             value=float(ranges[roles["rho"]]["default"]),
             step=50.0,
         )
 
 
 # ============================================================
-# Check whether current inputs represent extrapolation
+# Check current input domain
 # ============================================================
 
 outside_ranges = check_extrapolation(
@@ -330,7 +326,7 @@ outside_ranges = check_extrapolation(
     H,
     E,
     rho,
-    valid_ranges,
+    investigated_ranges,
 )
 
 
@@ -338,11 +334,8 @@ if outside_ranges:
 
     st.error(
         "⚠️ EXTRAPOLATION WARNING: One or more input parameters fall "
-        "outside the numerical domain used to develop and validate the "
-        "prediction models."
+        "outside the investigated numerical domain."
     )
-
-    warning_rows = []
 
     parameter_names = {
         "B": "Plan width, B",
@@ -360,14 +353,16 @@ if outside_ranges:
         "rho": "kg/m³",
     }
 
-    for parameter, information in outside_ranges.items():
+    warning_rows = []
+
+    for parameter, info in outside_ranges.items():
 
         warning_rows.append(
             {
                 "Parameter": parameter_names[parameter],
-                "Input value": information["value"],
-                "Valid minimum": information["min"],
-                "Valid maximum": information["max"],
+                "Input value": info["value"],
+                "Investigated range":
+                    f'{info["lower"]}–{info["upper"]}',
                 "Unit": units[parameter],
             }
         )
@@ -379,9 +374,9 @@ if outside_ranges:
     )
 
     st.warning(
-        "The resulting prediction represents extrapolation and has not "
-        "been validated by the present numerical database. The result "
-        "should therefore be interpreted with caution."
+        "The corresponding predictions represent extrapolation beyond "
+        "the parameter domain used for model development and evaluation. "
+        "They should therefore be interpreted with caution."
     )
 
 
@@ -414,6 +409,10 @@ if st.button(
 
     rows = []
 
+    prediction_failed = False
+    prediction_error_message = None
+
+
     # --------------------------------------------------------
     # Machine-learning predictions
     # --------------------------------------------------------
@@ -422,137 +421,199 @@ if st.button(
 
         for model_name, model in target_models.items():
 
-            prediction = float(
-                model.predict(input_df)[0]
-            )
+            try:
 
-            rows.append(
-                {
-                    "Target": target,
-                    "Method": model_name,
-                    "Predicted frequency (Hz)": prediction,
-                }
-            )
+                prediction = float(
+                    model.predict(input_df)[0]
+                )
+
+                rows.append(
+                    {
+                        "Target": target,
+                        "Method": model_name,
+                        "Predicted frequency (Hz)": prediction,
+                    }
+                )
+
+            except Exception as exc:
+
+                prediction_failed = True
+                prediction_error_message = str(exc)
+
+                st.error(
+                    f"Prediction failed for model: {model_name}"
+                )
 
 
     # --------------------------------------------------------
     # Explicit regression equations
     # --------------------------------------------------------
 
-    rows.extend(
-        [
-            {
-                "Target": "f1 (Hz)",
-                "Method": "Linear Regression Equation",
-                "Predicted frequency (Hz)": linear_formula_f1(
-                    B,
-                    L,
-                    H,
-                    E,
-                    rho,
-                ),
-            },
-            {
-                "Target": "f1 (Hz)",
-                "Method": "Symbolic Regression Equation",
-                "Predicted frequency (Hz)": symbolic_formula_f1(
-                    B,
-                    L,
-                    H,
-                    E,
-                    rho,
-                ),
-            },
-        ]
-    )
+    try:
 
-
-    # --------------------------------------------------------
-    # Results dataframe
-    # --------------------------------------------------------
-
-    results = pd.DataFrame(rows)
-
-    results["Predicted frequency (Hz)"] = (
-        results["Predicted frequency (Hz)"]
-        .round(4)
-    )
-
-
-    # --------------------------------------------------------
-    # Extrapolation flag
-    # --------------------------------------------------------
-
-    if outside_ranges:
-
-        st.error(
-            "These results correspond to EXTRAPOLATION outside the "
-            "validated numerical parameter domain."
-        )
-
-        results["Prediction domain"] = "Extrapolation"
-
-    else:
-
-        st.success(
-            "All input parameters are within the investigated numerical domain."
-        )
-
-        results["Prediction domain"] = "Within investigated range"
-
-
-    # --------------------------------------------------------
-    # Display results
-    # --------------------------------------------------------
-
-    st.subheader("Prediction results")
-
-    st.dataframe(
-        results,
-        use_container_width=True,
-        hide_index=True,
-    )
-
-
-    # --------------------------------------------------------
-    # f1 comparison
-    # --------------------------------------------------------
-
-    f1_results = results[
-        results["Target"] == "f1 (Hz)"
-    ]
-
-    if not f1_results.empty:
-
-        st.subheader("f1 model comparison")
-
-        st.bar_chart(
-            f1_results.set_index("Method")[
-                "Predicted frequency (Hz)"
+        rows.extend(
+            [
+                {
+                    "Target": "f1 (Hz)",
+                    "Method": "Linear Regression Equation",
+                    "Predicted frequency (Hz)":
+                        linear_formula_f1(
+                            B,
+                            L,
+                            H,
+                            E,
+                            rho,
+                        ),
+                },
+                {
+                    "Target": "f1 (Hz)",
+                    "Method": "Symbolic Regression Equation",
+                    "Predicted frequency (Hz)":
+                        symbolic_formula_f1(
+                            B,
+                            L,
+                            H,
+                            E,
+                            rho,
+                        ),
+                },
             ]
         )
 
+    except Exception:
+
+        st.error(
+            "An error occurred while evaluating the explicit equations."
+        )
+
 
     # --------------------------------------------------------
-    # Uncertainty note
+    # Model compatibility warning
     # --------------------------------------------------------
 
-    st.caption(
-        "Prediction intervals are not displayed because the current "
-        "models were not developed with a formally calibrated "
-        "uncertainty-quantification framework. Cross-validated error "
-        "metrics reported in the associated study should be used when "
-        "interpreting predictive performance."
-    )
+    if prediction_failed:
+
+        st.error(
+            "One or more trained machine-learning models could not be "
+            "evaluated. This may occur when the scikit-learn version used "
+            "to load the saved model differs from the version used when "
+            "the model was originally trained and saved."
+        )
+
+        if prediction_error_message:
+
+            with st.expander(
+                "Show technical prediction error"
+            ):
+
+                st.code(
+                    prediction_error_message
+                )
+
+
+    # --------------------------------------------------------
+    # Display available results
+    # --------------------------------------------------------
+
+    if rows:
+
+        results = pd.DataFrame(rows)
+
+        results["Predicted frequency (Hz)"] = (
+            results["Predicted frequency (Hz)"]
+            .round(4)
+        )
+
+
+        # ----------------------------------------------------
+        # Domain label
+        # ----------------------------------------------------
+
+        if outside_ranges:
+
+            results["Prediction domain"] = (
+                "Extrapolation"
+            )
+
+            st.error(
+                "The displayed predictions correspond to extrapolation "
+                "outside the investigated numerical parameter domain."
+            )
+
+        else:
+
+            results["Prediction domain"] = (
+                "Within investigated range"
+            )
+
+            st.success(
+                "All input parameters are within the investigated "
+                "numerical parameter domain."
+            )
+
+
+        # ----------------------------------------------------
+        # Results table
+        # ----------------------------------------------------
+
+        st.subheader(
+            "Prediction results"
+        )
+
+        st.dataframe(
+            results,
+            use_container_width=True,
+            hide_index=True,
+        )
+
+
+        # ----------------------------------------------------
+        # f1 model comparison
+        # ----------------------------------------------------
+
+        f1_results = results[
+            results["Target"] == "f1 (Hz)"
+        ]
+
+        if not f1_results.empty:
+
+            st.subheader(
+                "f1 model comparison"
+            )
+
+            st.bar_chart(
+                f1_results.set_index(
+                    "Method"
+                )[
+                    "Predicted frequency (Hz)"
+                ]
+            )
+
+
+        # ----------------------------------------------------
+        # Uncertainty note
+        # ----------------------------------------------------
+
+        st.caption(
+            "Prediction intervals are not displayed because the current "
+            "models were not developed using a formally calibrated "
+            "uncertainty-quantification framework. The cross-validated "
+            "error metrics reported in the associated study should be "
+            "considered when interpreting predictive performance."
+        )
 
 
 # ============================================================
 # Equations
 # ============================================================
 
-with st.expander("Show equations"):
+with st.expander(
+    "Show equations"
+):
 
-    st.markdown("**Linear regression**")
+    st.markdown(
+        "**Linear regression**"
+    )
 
     st.latex(
         r"""
@@ -562,7 +623,9 @@ with st.expander("Show equations"):
     )
 
 
-    st.markdown("**Symbolic regression**")
+    st.markdown(
+        "**Symbolic regression**"
+    )
 
     st.latex(
         r"""
@@ -575,8 +638,10 @@ with st.expander("Show equations"):
 
 
     st.caption(
-        "B, L, and H are in m; E is in MPa; "
-        "ρ is in kg/m³; f1 is in Hz."
+        "B, L, and H are in m; "
+        "E is in MPa; "
+        "ρ is in kg/m³; "
+        "f1 is in Hz."
     )
 
 
@@ -592,7 +657,8 @@ st.caption(
 )
 
 st.caption(
-    "The application is intended for use within the investigated numerical "
-    "parameter domain. Extrapolated predictions are explicitly flagged and "
-    "should not be interpreted as validated estimates."
+    "The application is intended primarily for use within the investigated "
+    "numerical parameter domain. Predictions outside this domain are "
+    "explicitly identified as extrapolations and should be interpreted "
+    "with caution."
 )
