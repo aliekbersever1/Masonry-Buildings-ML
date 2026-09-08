@@ -1,40 +1,45 @@
-# Masonry Buildings  ML
+# Masonry Buildings ML
 
-Machine Learning and Symbolic Regression models for predicting the first and second natural frequencies of historic masonry buildings.
+Machine learning and symbolic regression models for predicting the natural frequencies of masonry building archetypes.
 
 ---
 
 ## Overview
 
-This repository contains the Python codes developed for the following study:
+This repository contains the Python codes and numerical dataset developed for the study:
 
 **Machine Learning and Symbolic Regression Models for Predicting the Natural Frequencies of Masonry Buildings**
 
-The repository includes:
+The repository includes the complete data-driven workflow used for:
 
-- Group-based Nested Cross Validation
-- Hyperparameter Optimization
+- Group-based nested cross-validation
+- Hyperparameter optimization
 - Random Forest
 - XGBoost
 - LightGBM
 - CatBoost
 - Multi-Layer Perceptron (MLP)
 - Linear Regression
-- Symbolic Regression (PySR)
+- Symbolic Regression using PySR
+- Permutation feature importance
+- SHAP-based model interpretation
+- Performance evaluation and graphical comparison
+
+The numerical dataset was generated from finite element modal analyses performed in Abaqus and was subsequently used for machine-learning and regression-based prediction of the natural frequencies.
 
 ---
 
 ## Repository Structure
 
-```
-Masonr-Buildings-ML
+```text
+Masonry-Buildings-ML
 │
 ├── data/
-│     Kombinations.xlsx
+│   └── Kombinations.xlsx
 │
 ├── src/
-│     f1_f2_group_nested_final_test_only_code.py
-│     group_based_outer_cv_linear_symbolic_regression_final_fixed.py
+│   ├── f1_f2_group_nested_final_test_only_code.py
+│   └── group_based_outer_cv_linear_symbolic_regression_final_fixed.py
 │
 ├── results/
 │
@@ -43,72 +48,3 @@ Masonr-Buildings-ML
 ├── requirements.txt
 ├── LICENSE
 └── README.md
-```
-
----
-
-## Requirements
-
-Install the required packages:
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## Running the Codes
-
-### Machine Learning Models
-
-```bash
-cd src
-python f1_f2_group_nested_final_test_only_code.py
-```
-
-### Linear and Symbolic Regression
-
-```bash
-python group_based_outer_cv_linear_symbolic_regression_final_fixed.py
-```
-
----
-
-## Dataset
-
-The dataset used in this repository is located in
-
-```
-data/Kombinations.xlsx
-```
-
----
-
-## Outputs
-
-The scripts automatically generate:
-
-- Excel reports
-- Word reports
-- Prediction tables
-- Parity plots
-- SHAP plots
-- Feature importance plots
-
-All outputs are saved in
-
-```
-results/
-```
-
----
-
-## Citation
-
-If you use this repository, please cite the associated publication.
-
----
-
-## License
-
-This project is distributed under the MIT License.
